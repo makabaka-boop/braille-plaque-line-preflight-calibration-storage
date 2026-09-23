@@ -187,13 +187,23 @@ function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-function normalizeReadings(input: readonly string[] | CalibrationDraft): string[] {
+/**
+ * 校验输入是否为完整六点。
+ *
+ * 持久化恢复时绝不能用补空或截断改变点号与读数的对应关系；
+ * 工作区正常录入始终传入六点，因此直接拒绝长度不完整的调用。
+ */
+function requireSixReadings(input: readonly string[] | CalibrationDraft): string[] {
   const source = isStringArray(input) ? input : input.readings;
-  // 防御性地固定为六项：不足补空（按缺项报错），多余截掉。
-  return Array.from({ length: POINT_COUNT }, (_, index) =>
-    index < source.length ? String(source[index] ?? '') : ''
-  );
-}/**
+  if (!Array.isArray(source) || source.length !== POINT_COUNT) {
+    throw new TypeError(`试压校准必须提供完整的 ${POINT_COUNT} 个点读数。`);
+  }
+  if (!source.every((item) => typeof item === 'string')) {
+    throw new TypeError('试压校准读数必须全部为字符串。');
+  }
+  return source.slice();
+}
+/**
  * 执行一次校准判定。
  *
  * 先统一解析六点：任一点位读数无效即判定受阻，错误按点位就地展示并停止判定，
@@ -201,7 +211,7 @@ function normalizeReadings(input: readonly string[] | CalibrationDraft): string[
  * 单点均在 0.60–0.90 且极差不超过 0.15 为“合格”，否则为“需调机”。
  */
 export function judgeCalibration(input: readonly string[] | CalibrationDraft): CalibrationResult {
-  const raws = normalizeReadings(input);
+  const raws = requireSixReadings(input);
   const readings = raws.map((raw, index) => parsePointReading(raw, index));
   const blockedNote = '存在无效读数，已停止判定：请按各点位提示修正后重新执行判定。';
 

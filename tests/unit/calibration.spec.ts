@@ -25,16 +25,9 @@ describe('校准草稿契约', () => {
     expect(draft.readings).toEqual(['', '', '', '', '', '']);
   });
 
-  it('不足六项按缺项补齐，多于六项被截断', () => {
-    const short = judgeCalibration(['0.7', '0.71', '0.72', '0.73', '0.74']);
-    expect(short.verdict).toBe('blocked');
-    if (short.verdict === 'blocked') {
-      expect(short.readings).toHaveLength(6);
-      expect(short.readings[5].error?.kind).toBe('missing');
-    }
-
-    const long = judgeCalibration(draftOf('0.7', '0.71', '0.72', '0.73', '0.74', '0.75', '9.99'));
-    expect(long.verdict).toBe('pass');
+  it('不足六项或多于六项都拒绝，绝不补空或截断改变点号对应关系', () => {
+    expect(() => judgeCalibration(['0.7', '0.71', '0.72', '0.73', '0.74'])).toThrow(TypeError);
+    expect(() => judgeCalibration(draftOf('0.7', '0.71', '0.72', '0.73', '0.74', '0.75', '9.99'))).toThrow(TypeError);
   });
 
   it('接受 CalibrationDraft 对象与字符串数组两种入参', () => {
